@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { sendMessage } from "../api/chatService";
 
-function Chat({ locationId, userId, username, messages, canSend, loading }) {
+function Chat({ eventId, userId, username, messages, canSend, loading }) {
   const [input, setInput] = useState("");
   const chatEndRef = useRef(null);
 
@@ -13,7 +13,7 @@ function Chat({ locationId, userId, username, messages, canSend, loading }) {
     if (!canSend) return;
     if (!input.trim()) return;
 
-    sendMessage(locationId, {
+    sendMessage(eventId, {
       userId,
       username,
       content: input,

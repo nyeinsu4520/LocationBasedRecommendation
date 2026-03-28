@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { recommendationsApi } from "../api/recommendationsApi";
 import { geocodePlace } from "../api/geocodeApi";
-import { locationsApi } from "../api/locationsApi";
+import { eventsApi } from "../api/eventsApi";
 import { MapContainer, TileLayer, Marker, Popup, Circle } from "react-leaflet";
 import "../map/fixLeafletIcons";
 import { Link } from "react-router-dom";
@@ -16,6 +16,7 @@ export default function Locations() {
 
   const [center, setCenter] = useState({ lat: 51.4816, lng: -3.1791 });
   const [nearby, setNearby] = useState([]);
+  const [nearbyEvents, setNearbyEvents] = useState([]);
 
   const [type, setType] = useState("all");
   const [budget, setBudget] = useState("any");
@@ -24,7 +25,7 @@ export default function Locations() {
   const [radiusKm, setRadiusKm] = useState(2);
   const radiusMeters = useMemo(() => radiusKm * 1000, [radiusKm]);
 
-  const [joinedChats, setJoinedChats] = useState([]);
+  const [joinedEvents, setJoinedEvents] = useState([]); 
   const [loadingJoined, setLoadingJoined] = useState(false);
 
   const logout = () => {
@@ -34,12 +35,12 @@ export default function Locations() {
     window.location.href = "/login";
   };
 
-  const loadJoinedChats = async () => {
+  const loadJoinedEvents = async () => {
     try {
       setLoadingJoined(true);
-      const data = await locationsApi.joined();
+      const data = await eventsApi.joined();
       console.log("joined chats data:", data);
-      setJoinedChats(Array.isArray(data) ? data : []);
+      setJoinedEvents(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error("Failed to load joined chats:", error);
     } finally {
@@ -47,12 +48,33 @@ export default function Locations() {
     }
   };
 
+   const loadNearbyEvents = async (lat, lng) => {
+    try {
+      const data = await eventsApi.nearby(lat, lng, radiusKm);
+      setNearbyEvents(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("Failed to load nearby events:", error);
+    }
+  };
+
+  const getEventsForLocation = (loc) => {
+  return nearbyEvents.filter((event) => {
+    const latDiff = Math.abs(event.latitude - (loc.lat ?? loc.latitude));
+    const lngDiff = Math.abs(event.longitude - (loc.lon ?? loc.longitude));
+    return latDiff < 0.002 && lngDiff < 0.002; 
+  });
+};
+
+const role = localStorage.getItem("role");
+const isHost = role == "HOST" || role === "HOST_PREMIUM";
+
   useEffect(() => {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
         console.log("User location:", latitude, longitude);
         setCenter({ lat: latitude, lng: longitude });
+        loadNearbyEvents(latitude,longitude);
       },
       (error) => {
         console.error("Location error:", error);
@@ -83,6 +105,7 @@ export default function Locations() {
     };
 
     loadNearby();
+    loadNearbyEvents(center.lat,center.lng);
   }, [center.lat, center.lng, radiusKm, type, budget]);
 
   useEffect(() => {
@@ -91,7 +114,7 @@ export default function Locations() {
       console.warn("No token found, skipping loadJoinedChats");
       return;
     }
-    loadJoinedChats();
+    loadJoinedEvents();
   }, []);
 
   const onSearch = async (e) => {
@@ -102,7 +125,6 @@ export default function Locations() {
     try {
       setErr("");
       setGeoLoading(true);
-
       const results = await geocodePlace(q);
       setGeoResults(results);
 
@@ -122,27 +144,15 @@ export default function Locations() {
     setGeoResults([]);
   };
 
-  const joinLocation = async (loc) => {
+  const joinEvent = async (eventId) => {
     try {
       setErr("");
-
-      const savedLocation = await locationsApi.create({
-        name: loc.name || "Unknown place",
-        category: loc.kinds || loc.type || "general",
-        latitude: loc.lat ?? loc.latitude,
-        longitude: loc.lon ?? loc.longitude,
-        description: loc.wikipedia || loc.address || loc.name || ""
-      });
-
-      console.log("savedLocation:", savedLocation);
-
-      await locationsApi.join(savedLocation.id);
-      await loadJoinedChats();
-
-      window.location.href = `/locations/${savedLocation.id}/chat`;
+      await eventsApi.join(eventId);
+      await loadJoinedEvents();
+      window.location.href = `/events/${eventId}/chat`;
     } catch (error) {
-      console.error("Failed to join:", error);
-      setErr("Failed to join chat.");
+      console.error("Failed to join event:", error);
+      setErr(error.response?.data || "Failed to join event.");
     }
   };
 
@@ -155,10 +165,9 @@ export default function Locations() {
               Search & Recommend
             </h1>
             <p className="text-slate-500 text-sm mt-1">
-              Search a place, then we recommend nearby locations.
+              Search a place, then find host-created events nearby.
             </p>
           </div>
-
           <button
             onClick={logout}
             className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
@@ -173,39 +182,38 @@ export default function Locations() {
           </div>
         )}
 
+        {isHost && (
+          <Link to="/host/create-event" className="rounded-xl bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
+            Create event
+          </Link>
+        )
+
+        }
+
         <div className="mt-6 bg-white rounded-2xl shadow p-5">
-          <h2 className="text-lg font-semibold text-slate-900">
-            Your Joined Chats
-          </h2>
-
+          <h2 className="text-lg font-semibold text-slate-900">Your Joined Events</h2>
           <div className="mt-2 text-sm text-slate-500">
-            {loadingJoined ? "Loading..." : `${joinedChats.length} joined chat(s)`}
+            {loadingJoined ? "Loading..." : `${joinedEvents.length} joined event(s)`}
           </div>
-
           <div className="mt-4 space-y-3">
-            {joinedChats.map((j, index) => {
-              const location = j.location || j;
-              const locationId = location?.id;
-              const locationName = location?.name || "Unknown location";
-              const locationCategory = location?.category || "general";
+            {joinedEvents.map((j, index) => {
+              const event = j.event || j;
+              const eventId = event?.id;
+              const eventTitle = event?.title || "Unknown event";
+              const eventLocation = event?.locationName || "Unknown location";
 
               return (
                 <div
-                  key={j.id || locationId || index}
+                  key={j.id || eventId || index}
                   className="rounded-xl border border-slate-200 p-3 flex items-center justify-between"
                 >
                   <div>
-                    <div className="font-medium text-slate-900">
-                      {locationName}
-                    </div>
-                    <div className="text-sm text-slate-500">
-                      {locationCategory}
-                    </div>
+                    <div className="font-medium text-slate-900">{eventTitle}</div>
+                    <div className="text-sm text-slate-500">{eventLocation}</div>
                   </div>
-
-                  {locationId ? (
+                  {eventId ? (
                     <Link
-                      to={`/locations/${locationId}/chat`}
+                      to={`/events/${eventId}/chat`}
                       className="rounded-xl bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800"
                     >
                       Open Chat
@@ -216,15 +224,15 @@ export default function Locations() {
                 </div>
               );
             })}
-
-            {!loadingJoined && joinedChats.length === 0 && (
+            {!loadingJoined && joinedEvents.length === 0 && (
               <div className="text-sm text-slate-500">
-                You have not joined any chats yet.
+                No joined events yet. Find a host event on the map to join.
               </div>
             )}
           </div>
         </div>
 
+        {/* Search bar — unchanged */}
         <div className="mt-6 bg-white rounded-2xl shadow p-4">
           <form onSubmit={onSearch} className="flex gap-2 flex-wrap">
             <input
@@ -233,29 +241,23 @@ export default function Locations() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
             />
-
             <button
               type="submit"
               className="rounded-xl bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800"
             >
               {geoLoading ? "Searching..." : "Search"}
             </button>
-
             <div className="flex items-center gap-2 flex-wrap">
               <span className="text-sm text-slate-600">Radius</span>
-
               <select
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
                 value={radiusKm}
                 onChange={(e) => setRadiusKm(Number(e.target.value))}
               >
                 {radiusOptionsKm.map((km) => (
-                  <option key={km} value={km}>
-                    {km} km
-                  </option>
+                  <option key={km} value={km}>{km} km</option>
                 ))}
               </select>
-
               <select
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
                 value={type}
@@ -266,7 +268,6 @@ export default function Locations() {
                 <option value="restaurants">Restaurants</option>
                 <option value="attractions">Attractions</option>
               </select>
-
               <select
                 className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm"
                 value={budget}
@@ -279,7 +280,6 @@ export default function Locations() {
               </select>
             </div>
           </form>
-
           {geoResults.length > 0 && (
             <div className="mt-3 rounded-xl border border-slate-200 overflow-hidden">
               {geoResults.map((r, idx) => (
@@ -289,9 +289,7 @@ export default function Locations() {
                   onClick={() => chooseResult(r)}
                   className="w-full text-left px-4 py-3 hover:bg-slate-50"
                 >
-                  <div className="text-sm font-medium text-slate-900">
-                    {r.displayName}
-                  </div>
+                  <div className="text-sm font-medium text-slate-900">{r.displayName}</div>
                   <div className="text-xs text-slate-500">
                     {r.lat.toFixed(5)}, {r.lng.toFixed(5)}
                   </div>
@@ -309,7 +307,6 @@ export default function Locations() {
                 Center: {center.lat.toFixed(4)}, {center.lng.toFixed(4)}
               </div>
             </div>
-
             <div className="h-[520px] rounded-xl overflow-hidden">
               <MapContainer
                 center={[center.lat, center.lng]}
@@ -321,47 +318,47 @@ export default function Locations() {
                   attribution="&copy; OpenStreetMap contributors"
                   url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                 />
-
                 <Marker position={[center.lat, center.lng]}>
                   <Popup>Search center</Popup>
                 </Marker>
-
                 <Circle center={[center.lat, center.lng]} radius={radiusMeters} />
 
+                {/* Recommendation pins — unchanged */}
                 {nearby.map((loc, idx) => (
                   <Marker
-                    key={`${loc.source}-${loc.type}-${loc.name}-${idx}`}
+                    key={`rec-${loc.source}-${loc.name}-${idx}`}
                     position={[loc.latitude, loc.longitude]}
                   >
                     <Popup>
                       <div className="font-semibold">{loc.name}</div>
-
-                      <div className="text-sm capitalize">
-                        {loc.type} • {loc.source}
-                      </div>
-
+                      <div className="text-sm capitalize">{loc.type} • {loc.source}</div>
                       {loc.distanceKm != null && (
+                        <div className="text-xs mt-1">{loc.distanceKm.toFixed(2)} km away</div>
+                      )}
+                    </Popup>
+                  </Marker>
+                ))}
+
+                {/* ✅ Event pins — only show if host created an event here */}
+                {nearbyEvents.map((event) => (
+                  <Marker
+                    key={`event-${event.id}`}
+                    position={[event.latitude, event.longitude]}
+                  >
+                    <Popup>
+                      <div className="font-semibold">{event.title}</div>
+                      <div className="text-sm text-slate-500">{event.locationName}</div>
+                      {event.eventDate && (
                         <div className="text-xs mt-1">
-                          {loc.distanceKm.toFixed(2)} km away
+                          {new Date(event.eventDate).toLocaleDateString()}
                         </div>
                       )}
-
-                      {loc.address && (
-                        <div className="text-xs mt-1">{loc.address}</div>
-                      )}
-
-                      {loc.website && (
-                        <div className="text-xs mt-1">
-                          <a
-                            className="text-blue-600 underline"
-                            href={loc.website}
-                            target="_blank"
-                            rel="noreferrer"
-                          >
-                            Website
-                          </a>
-                        </div>
-                      )}
+                      <button
+                        onClick={() => joinEvent(event.id)}
+                        className="mt-2 px-3 py-1 bg-blue-600 text-white rounded text-sm w-full"
+                      >
+                        Join Event
+                      </button>
                     </Popup>
                   </Marker>
                 ))}
@@ -369,49 +366,82 @@ export default function Locations() {
             </div>
           </div>
 
+         
           <div className="bg-white rounded-2xl shadow p-5">
-            <h2 className="text-lg font-semibold text-slate-900">
-              Recommendations
-            </h2>
-
+            <h2 className="text-lg font-semibold text-slate-900">Recommendations</h2>
             <div className="mt-2 text-sm text-slate-500">
               {loadingNearby ? "Loading..." : `${nearby.length} place(s) found`}
             </div>
-
             <div className="mt-4 space-y-3">
-              {nearby.map((l, idx) => (
+    {nearby.map((l, idx) => {
+
+      // ✅ Find events near this recommendation (within ~200m)
+      const locationEvents = nearbyEvents.filter((event) => {
+        const latDiff = Math.abs(event.latitude - (l.lat ?? l.latitude));
+        const lngDiff = Math.abs(event.longitude - (l.lon ?? l.longitude));
+        return latDiff < 0.002 && lngDiff < 0.002;
+      });
+
+      return (
+        <div
+          key={`${l.source}-${l.type}-${l.name}-${idx}`}
+          className="rounded-xl border border-slate-200 p-3"
+        >
+          <div className="font-medium text-slate-900">{l.name}</div>
+          <div className="text-sm text-slate-500 capitalize">
+            {l.type} • {l.source}
+          </div>
+          {l.distanceKm != null && (
+            <div className="text-sm text-slate-600 mt-1">
+              {l.distanceKm.toFixed(2)} km away
+            </div>
+          )}
+          {l.address && (
+            <div className="text-sm text-slate-600 mt-1">{l.address}</div>
+          )}
+
+          {locationEvents.length > 0 ? (
+            <div className="mt-2 space-y-2">
+              {locationEvents.map((event) => (
                 <div
-                  key={`${l.source}-${l.type}-${l.name}-${idx}`}
-                  className="rounded-xl border border-slate-200 p-3"
+                  key={event.id}
+                  className="bg-blue-50 rounded-lg px-3 py-2 flex items-center justify-between gap-2"
                 >
-                  <div className="font-medium text-slate-900">{l.name}</div>
-
-                  <div className="text-sm text-slate-500 capitalize">
-                    {l.type} • {l.source}
-                  </div>
-
-                  {l.distanceKm != null && (
-                    <div className="text-sm text-slate-600 mt-1">
-                      {l.distanceKm.toFixed(2)} km away
+                  <div>
+                    <div className="text-sm font-medium text-blue-800">
+                      {event.title}
                     </div>
-                  )}
-
-                  {l.address && (
-                    <div className="text-sm text-slate-600 mt-1">{l.address}</div>
-                  )}
-
+                    <div className="text-xs text-blue-600 mt-0.5">
+                      {event.eventDate
+                        ? new Date(event.eventDate).toLocaleDateString("en-GB", {
+                            weekday: "short",
+                            day: "numeric",
+                            month: "short",
+                          })
+                        : "Date TBC"}
+                    </div>
+                  </div>
                   <button
-                    onClick={() => joinLocation(l)}
-                    className="inline-block mt-2 px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                    onClick={() => joinEvent(event.id)}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-white border border-blue-300 text-blue-700 hover:bg-blue-100 whitespace-nowrap"
                   >
-                    Join Chat
+                    Join event
                   </button>
                 </div>
               ))}
-
+            </div>
+          ) : (
+           
+            <div className="mt-2 text-xs text-slate-400">
+              No events here yet
+            </div>
+          )}
+        </div>
+      );
+    })}
               {!loadingNearby && nearby.length === 0 && (
                 <div className="text-sm text-slate-500">
-                  No recommendations found. Try a bigger radius or different search.
+                  No recommendations found. Try a bigger radius.
                 </div>
               )}
             </div>

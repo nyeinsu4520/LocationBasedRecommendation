@@ -14,6 +14,7 @@ export default function Login() {
       localStorage.setItem("token", res.token);
       localStorage.setItem("userId", String(res.userId));
       localStorage.setItem("name", res.name);
+      localStorage.setItem("role", res.role); 
       window.location.href = "/locations";
     } catch {
       setErr("Login failed. Check email/password.");

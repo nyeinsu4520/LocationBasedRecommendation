@@ -3,7 +3,7 @@ import SockJS from "sockjs-client";
 
 let client = null;
 
-export const connectWebSocket = (locationId, onMessageReceived) => {
+export const connectWebSocket = (eventId, onMessageReceived) => { // ✅ renamed param to eventId
   const token = localStorage.getItem("token");
   if (!token) {
     console.error("No JWT token found! Cannot connect WebSocket.");
@@ -23,7 +23,8 @@ export const connectWebSocket = (locationId, onMessageReceived) => {
   client.onConnect = () => {
     console.log("Connected to WebSocket");
 
-    client.subscribe(`/topic/locations/${locationId}`, (message) => {
+    // ✅ eventId now matches the parameter name
+    client.subscribe(`/topic/events/${eventId}`, (message) => {
       console.log("WebSocket message:", message.body);
       if (onMessageReceived) {
         onMessageReceived(JSON.parse(message.body));
@@ -38,14 +39,14 @@ export const connectWebSocket = (locationId, onMessageReceived) => {
   client.activate();
 };
 
-export const sendMessage = (locationId, message) => {
+export const sendMessage = (eventId, message) => { // ✅ renamed param to eventId
   if (!client || !client.connected) {
     console.error("WebSocket not connected!");
     return;
   }
 
   client.publish({
-    destination: `/app/locations/${locationId}/chat`,
+    destination: `/app/events/${eventId}/chat`, // ✅ fixed from /app/locations/
     body: JSON.stringify(message),
   });
 };

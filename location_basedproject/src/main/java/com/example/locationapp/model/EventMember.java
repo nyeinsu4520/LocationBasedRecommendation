@@ -3,20 +3,24 @@ package com.example.locationapp.model;
 import jakarta.persistence.*;
 import java.time.Instant;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 @Entity
-@Table(name = "join_events")
-public class JoinEvent {
-    public enum Status {ACTIVE, OFFLINE}
+@Table(name = "event_members",
+    uniqueConstraints = @UniqueConstraint(columnNames = {"event_id", "user_id"}))
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+public class EventMember {
+    public enum Status {ACTIVE, LEFT}
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; 
-
     private Long userId;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "location_id", nullable = false)
-    private Location location;
+    @JoinColumn(name = "event_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Event event;
 
     @Enumerated(EnumType.STRING)
     private Status status = Status.ACTIVE;
@@ -24,11 +28,11 @@ public class JoinEvent {
     private Instant joinedAt = Instant.now();
     private Instant leftAt;
 
-    public JoinEvent(){}
+    public EventMember(){}
 
-    public JoinEvent(Long userId, Location location){
+    public EventMember(Event event,Long userid){
         this.userId = userId;
-        this.location = location;
+        this.event = event;
         this.status = Status.ACTIVE;
         this.joinedAt = Instant.now();
     }
@@ -38,8 +42,8 @@ public class JoinEvent {
     public Long getUserId() {return userId;}
     public void setUserId(Long userId) {this.userId = userId; }
 
-    public Location getLocation() {return location;}
-    public void setLocation(Location location) {this.location = location;}
+    public Event getEvent() {return event;}
+    public void setEvent(Event event) {this.event = event;}
 
     public Status getStatus() {return status;}
     public void setStatus(Status status) {this.status = status;}

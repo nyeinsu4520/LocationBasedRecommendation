@@ -22,21 +22,23 @@ public class ChatController {
         this.chatService = chatService;
     }
 
-    @GetMapping("/{locationId}")
-    public List<JoinMessage> getMessages(@PathVariable Long locationId) {
-        return chatService.getMessagesByLocation(locationId);
+    @GetMapping("/{eventId}")
+    public List<JoinMessage> getMessages(@PathVariable Long eventId) {
+        return chatService.getMessagesByEvent(eventId);
     }
 
-    @MessageMapping("/locations/{locationId}/chat")
-    public void sendMessage(@DestinationVariable Long locationId, @Payload JoinMessage incoming) {
-
-        if (!chatService.isUserInLocation(incoming.getUserId(), locationId)) {
-            throw new RuntimeException("User not in this location");
+    @MessageMapping("/events/{eventId}/chat")
+    public void sendMessage(
+            @DestinationVariable Long eventId,
+            @Payload JoinMessage incoming
+    ) {
+        if (!chatService.isUserInEvent(incoming.getUserId(), eventId)) {
+            throw new RuntimeException("User is not a member of this event");
         }
 
-        incoming.setLocationId(locationId);
+        incoming.setLocationId(eventId);
         incoming.setTimestamp(Instant.now());
         JoinMessage saved = chatService.saveIncoming(incoming);
-        messagingTemplate.convertAndSend("/topic/locations/" + locationId, saved);
+        messagingTemplate.convertAndSend("/topic/events/" + eventId, saved);
     }
 }

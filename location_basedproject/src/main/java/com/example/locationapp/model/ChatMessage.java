@@ -1,5 +1,6 @@
 package com.example.locationapp.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import java.time.Instant;
 
@@ -14,9 +15,11 @@ public class ChatMessage {
     private Long userId;
     private String username;
 
+    // ✅ Changed from Location to Event
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "location_id", nullable = false)
-    private Location location;
+    @JoinColumn(name = "event_id", nullable = false)
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    private Event event;
 
     @Column(nullable = false, length = 1000)
     private String content;
@@ -25,10 +28,11 @@ public class ChatMessage {
 
     public ChatMessage() {}
 
-    public ChatMessage(Long userId, String username, Location location, String content) {
+    // ✅ Constructor now accepts Event instead of Location
+    public ChatMessage(Long userId, String username, Event event, String content) {
         this.userId = userId;
         this.username = username;
-        this.location = location;
+        this.event = event;
         this.content = content;
         this.createdAt = Instant.now();
     }
@@ -41,8 +45,8 @@ public class ChatMessage {
     public String getUsername() { return username; }
     public void setUsername(String username) { this.username = username; }
 
-    public Location getLocation() { return location; }
-    public void setLocation(Location location) { this.location = location; }
+    public Event getEvent() { return event; }
+    public void setEvent(Event event) { this.event = event; }
 
     public String getContent() { return content; }
     public void setContent(String content) { this.content = content; }
