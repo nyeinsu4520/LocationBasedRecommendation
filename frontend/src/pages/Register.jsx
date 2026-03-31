@@ -23,6 +23,7 @@ export default function Register() {
       localStorage.setItem("token", res.token);
       localStorage.setItem("userId", String(res.userId));
       localStorage.setItem("name", res.name);
+      localStorage.setItem("role", res.role);
       window.location.href = "/locations";
     } catch {
       setErr("Register failed. Email might already exist.");

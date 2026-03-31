@@ -6,6 +6,8 @@ import jakarta.persistence.*;
 @Table(name = "users")
 public class User {
 
+    public enum Status{ACTIVE, BANNED }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -26,6 +28,10 @@ public class User {
     @Column(nullable = false)
     private Role role;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Status status = Status.ACTIVE;
+
     public User() {}
 
     public User(String email, String passwordHash, String name, String phoneNumber, Role role) {
@@ -34,6 +40,7 @@ public class User {
     this.name = name;
     this.phoneNumber = phoneNumber;
     this.role = role;
+    this.status = Status.ACTIVE;
     }
 
     public Long getId() { return id; }
@@ -52,5 +59,8 @@ public class User {
 
     public String getPhoneNumber() { return phoneNumber; }
     public void setPhoneNumber(String phoneNumber) { this.phoneNumber = phoneNumber; }
+
+    public Status getStatus() {return status;}
+    public void setStatus(Status status) {this.status = status;}
 
 }

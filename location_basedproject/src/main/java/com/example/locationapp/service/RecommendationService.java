@@ -1,6 +1,7 @@
 package com.example.locationapp.service;
 
 import com.example.locationapp.dto.recommendation.RecommendationItemDTO;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -8,25 +9,22 @@ import java.util.*;
 @Service
 public class RecommendationService {
 
-    private final OverpassService overpassService;
-    private final OpenTripMapService openTripMapService;
+    private final GeoapifyService geoapifyService;
 
-    public RecommendationService(OverpassService overpassService, OpenTripMapService openTripMapService) {
-        this.overpassService = overpassService;
-        this.openTripMapService = openTripMapService;
+    public RecommendationService(GeoapifyService geoapifyService) {
+        this.geoapifyService = geoapifyService;
     }
 
-    public List<RecommendationItemDTO> getRecommendations(double lat, double lng, double radiusKm, String type,String budget) {
+    @Cacheable(value = "recommendations",
+               key = "T(Math).round(#lat * 100) + ',' + T(Math).round(#lng * 100) + ',' + #radiusKm")
+    public List<RecommendationItemDTO> getRecommendations(
+            double lat, double lng, double radiusKm, String type, String budget) {
 
-        List<RecommendationItemDTO> overpassItems = overpassService.fetchAll(lat, lng, radiusKm);
-        List<RecommendationItemDTO> otmItems = openTripMapService.fetchAttractions(lat, lng, radiusKm);
-
-        List<RecommendationItemDTO> all = new ArrayList<>();
-        all.addAll(overpassItems);
-        all.addAll(otmItems);
+        List<RecommendationItemDTO> all = new ArrayList<>(
+                geoapifyService.fetchAll(lat, lng, radiusKm) 
+        );
 
         String t = (type == null ? "all" : type.toLowerCase(Locale.ROOT));
-
         if (!t.equals("all")) {
             all.removeIf(item -> {
                 String itemType = item.getType() == null ? "" : item.getType().toLowerCase(Locale.ROOT);
@@ -40,22 +38,18 @@ public class RecommendationService {
         }
 
         String b = (budget == null ? "any" : budget.toLowerCase(Locale.ROOT));
-        if(!b.equals("any")) {
+        if (!b.equals("any")) {
             all.removeIf(item -> {
                 String level = estimateBudgetLevel(item);
-                if(level.equals("unknown")) level = "medium";
+                if (level.equals("unknown")) level = "medium";
                 return !level.equals(b);
             });
         }
 
         Map<String, RecommendationItemDTO> unique = new LinkedHashMap<>();
-
         for (RecommendationItemDTO item : all) {
             String name = item.getName() == null ? "" : item.getName().trim().toLowerCase(Locale.ROOT);
-            String key = name
-                    + "|" + round(item.getLatitude(), 4)
-                    + "|" + round(item.getLongitude(), 4);
-
+            String key = name + "|" + round(item.getLatitude(), 4) + "|" + round(item.getLongitude(), 4);
             if (!unique.containsKey(key)) {
                 unique.put(key, item);
             } else {
@@ -68,12 +62,10 @@ public class RecommendationService {
         }
 
         List<RecommendationItemDTO> result = new ArrayList<>(unique.values());
-
         result.sort(Comparator.comparingDouble(r -> r.getDistanceKm() == null ? 999999.0 : r.getDistanceKm()));
 
-        if (result.size() > 80) {
-            result = result.subList(0, 80);
-        }
+        // ✅ Reduced from 80 to 30 — faster response, less rendering
+        if (result.size() > 30) result = result.subList(0, 30);
 
         return result;
     }
@@ -83,55 +75,48 @@ public class RecommendationService {
         return Math.round(v * p) / p;
     }
 
-    private static String safe(String s){
+    private static String safe(String s) {
         return s == null ? "" : s.trim().toLowerCase(Locale.ROOT);
     }
 
-    private String estimateBudgetLevel(RecommendationItemDTO item){
+    private String estimateBudgetLevel(RecommendationItemDTO item) {
         String type = safe(item.getType());
-        Map<String,String> tags = item.getTags() == null? Map.of() : item.getTags();
+        Map<String, String> tags = item.getTags() == null ? Map.of() : item.getTags();
 
-        if(type.equals ("hotels")){
+        if (type.equals("hotels")) {
             String starsStr = tags.getOrDefault("starts", tags.getOrDefault("hotel:stars", ""));
             Integer stars = parseIntSafe(starsStr);
-
-            if(stars != null){
-                if(stars >=4) return "high";
-                if(stars == 3) return "medium";
+            if (stars != null) {
+                if (stars >= 4) return "high";
+                if (stars == 3) return "medium";
                 return "low";
             }
-
             boolean hasWebsite = item.getWebsite() != null && !item.getWebsite().isBlank();
             boolean hasAddress = item.getAddress() != null && !item.getAddress().isBlank();
-            if(hasWebsite && hasAddress) return "medium";
+            if (hasWebsite && hasAddress) return "medium";
             return "unknown";
         }
 
-        if(type.equals("restaurant")){
-            String amentity = safe(tags.get("amenity"));
-            if(amentity.equals("fast_food")) return "low";
-
+        if (type.equals("restaurant")) {
+            String amenity = safe(tags.get("amenity"));
+            if (amenity.equals("fast_food")) return "low";
             String cuisine = tags.getOrDefault("cuisine", "");
-            if(!cuisine.isBlank()) return "medium";
-
+            if (!cuisine.isBlank()) return "medium";
             String takeaway = safe(tags.get("takeaway"));
             String outdoor = safe(tags.get("outdoor_seating"));
-            if(takeaway.equals("no") && outdoor.equals("yes")) return "medium";
+            if (takeaway.equals("no") && outdoor.equals("yes")) return "medium";
             return "unknown";
         }
 
-        if(type.equals("attraction")){
-            return "medium";
-        }
+        if (type.equals("attraction")) return "medium";
         return "unknown";
-
     }
 
-    private Integer parseIntSafe(String s){
-        try{
+    private Integer parseIntSafe(String s) {
+        try {
             if (s == null || s.isBlank()) return null;
             return Integer.parseInt(s.trim());
-        }catch(Exception e){
+        } catch (Exception e) {
             return null;
         }
     }

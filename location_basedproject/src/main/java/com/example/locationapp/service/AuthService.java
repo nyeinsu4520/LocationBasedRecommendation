@@ -41,6 +41,10 @@ public class AuthService {
             throw new IllegalArgumentException("Invalid email/password");
         }
 
+        if (user.getStatus() == User.Status.BANNED) {
+        throw new IllegalArgumentException("Your account has been banned.");
+    }
+
         String token = jwtUtil.generateToken(user.getId(), user.getEmail(),user.getRole().name());
         return new AuthResponse(user.getId(), user.getName(), user.getEmail(), token, user.getRole().name());
     }

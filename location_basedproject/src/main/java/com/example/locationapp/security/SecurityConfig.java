@@ -47,8 +47,11 @@ public SecurityFilterChain filterChain(org.springframework.security.config.annot
         .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers("/api/recommendations/**").authenticated()
+                .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/host-requests/**").authenticated()
                 .requestMatchers("/api/chat/**").authenticated()
                 .requestMatchers("/api/locations/**").authenticated()
+                .requestMatchers("/api/events/**").authenticated()
                 .requestMatchers("/ws", "/ws/**").permitAll()
                 .anyRequest().authenticated()
         );

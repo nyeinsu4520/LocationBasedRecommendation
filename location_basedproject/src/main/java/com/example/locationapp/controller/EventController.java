@@ -10,6 +10,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+
 import java.util.List;
 
 @RestController
@@ -67,6 +68,14 @@ public class EventController {
             @AuthenticationPrincipal UserPrincipal principal
     ) {
         return ResponseEntity.ok(eventService.getJoinedEvents(principal.getUserId()));
+    }
+
+    @GetMapping("/{eventId}/is-member")
+    public ResponseEntity<Boolean> isMember(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return ResponseEntity.ok(eventService.isMember(eventId, principal.getUserId()));
     }
 
     // ✅ ALL: nearby events on the map

@@ -1,27 +1,27 @@
 import { useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate, Link, useSearchParams } from "react-router-dom"; 
 import { eventsApi } from "../api/eventsApi";
 import { geocodePlace } from "../api/geocodeApi";
 
 export default function CreateEventPage() {
   const navigate = useNavigate();
-
+  const [searchParams] = useSearchParams();
   const role = localStorage.getItem("role");
   const isPremium = role === "HOST_PREMIUM";
   const maxAllowed = isPremium ? 50 : 10;
 
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    eventDate: "",
-    locationName: "",
-    address: "",
-    latitude: null,
-    longitude: null,
-    maxAttendees: isPremium ? 50 : 10,
-  });
+const [form, setForm] = useState({
+  title: "",
+  description: "",
+  eventDate: "",
+  locationName: searchParams.get("name") || "",      
+  address: searchParams.get("address") || "",     
+  latitude: searchParams.get("lat") ? Number(searchParams.get("lat")) : null,  
+  longitude: searchParams.get("lng") ? Number(searchParams.get("lng")) : null, 
+  maxAttendees: isPremium ? 50 : 10,
+});
 
-  const [locationQuery, setLocationQuery] = useState("");
+const [locationQuery, setLocationQuery] = useState(searchParams.get("name") || "");
   const [geoResults, setGeoResults] = useState([]);
   const [geoLoading, setGeoLoading] = useState(false);
   const [loading, setLoading] = useState(false);

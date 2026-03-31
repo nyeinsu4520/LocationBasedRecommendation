@@ -30,4 +30,8 @@ export const eventsApi = {
   // Host: their own events
   myEvents: async () =>
     (await api.get("/api/events/my-events")).data,
+
+  // ✅ Check if current user is already a member of this event
+isMember: async (eventId) =>
+    (await api.get(`/api/events/${eventId}/is-member`)).data,
 };

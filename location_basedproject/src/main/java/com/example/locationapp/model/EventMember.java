@@ -30,7 +30,7 @@ public class EventMember {
 
     public EventMember(){}
 
-    public EventMember(Event event,Long userid){
+    public EventMember(Event event,Long userId){
         this.userId = userId;
         this.event = event;
         this.status = Status.ACTIVE;

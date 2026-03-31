@@ -4,23 +4,31 @@ import java.util.Map;
 
 public class RecommendationItemDTO {
 
-    private Long id;           // <-- add this
-    private String source;      // "overpass" or "opentripmap"
-    private String type;        // "hotel", "restaurant", "attraction"
+    private Long id;
+    private String source;
+    private String type;
     private String name;
     private double latitude;
     private double longitude;
-    private Double distanceKm;  // computed by backend
-    private String address;     // optional
-    private String website;     // optional
-    private Map<String, String> tags; // optional extra fields
+    private Double distanceKm;
+    private String address;
+    private String website;
+    private Map<String, String> tags;
+
+    // ✅ New fields
+    private String openingHours;
+    private String phone;
+    private String cuisine;
+    private String email;
 
     public RecommendationItemDTO() {}
 
     public RecommendationItemDTO(String source, String type, String name,
                                  double latitude, double longitude,
                                  Double distanceKm, String address, String website,
-                                 Map<String, String> tags) {
+                                 Map<String, String> tags,
+                                 String openingHours, String phone,
+                                 String cuisine, String email) {
         this.source = source;
         this.type = type;
         this.name = name;
@@ -30,6 +38,10 @@ public class RecommendationItemDTO {
         this.address = address;
         this.website = website;
         this.tags = tags;
+        this.openingHours = openingHours;
+        this.phone = phone;
+        this.cuisine = cuisine;
+        this.email = email;
     }
 
     public Long getId() { return id; }
@@ -61,4 +73,16 @@ public class RecommendationItemDTO {
 
     public Map<String, String> getTags() { return tags; }
     public void setTags(Map<String, String> tags) { this.tags = tags; }
+
+    public String getOpeningHours() { return openingHours; }
+    public void setOpeningHours(String openingHours) { this.openingHours = openingHours; }
+
+    public String getPhone() { return phone; }
+    public void setPhone(String phone) { this.phone = phone; }
+
+    public String getCuisine() { return cuisine; }
+    public void setCuisine(String cuisine) { this.cuisine = cuisine; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
 }

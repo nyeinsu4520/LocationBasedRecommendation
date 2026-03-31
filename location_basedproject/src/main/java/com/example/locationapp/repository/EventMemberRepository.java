@@ -13,6 +13,12 @@ public interface EventMemberRepository extends JpaRepository<EventMember, Long> 
     @Query("SELECT m FROM EventMember m WHERE m.event.id = :eventId AND m.status = :status")
     List<EventMember> findByEventIdAndStatus(@Param("eventId") Long eventId, @Param("status") EventMember.Status status);
 
+    @Query("SELECT m FROM EventMember m WHERE m.event.id = :eventId AND m.userId = :userId AND m.status = 'ACTIVE'")
+    Optional<EventMember> findActiveByEventIdAndUserId(
+            @Param("eventId") Long eventId,
+            @Param("userId") Long userId);
+
+
     @Query("SELECT m FROM EventMember m WHERE m.event.id = :eventId AND m.userId = :userId")
     Optional<EventMember> findByEventIdAndUserId(@Param("eventId") Long eventId, @Param("userId") Long userId);
 
@@ -30,4 +36,6 @@ public interface EventMemberRepository extends JpaRepository<EventMember, Long> 
 
     @Query("SELECT m FROM EventMember m WHERE m.event.id = :eventId")
     List<EventMember> findByEventId(@Param("eventId") Long eventId);
+
+    boolean existsByUserIdAndEventIdAndStatus(Long userId, Long eventId, EventMember.Status status);
 }

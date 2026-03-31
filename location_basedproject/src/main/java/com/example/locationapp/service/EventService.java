@@ -68,6 +68,12 @@ public class EventService {
         return eventMemberRepository.findByUserId(userId);
     }
 
+
+    public boolean isMember(Long eventId, Long userId) {
+        return eventMemberRepository.existsByUserIdAndEventIdAndStatus(
+                userId, eventId, EventMember.Status.ACTIVE);
+    }
+
     public List<EventSummaryDto> getNearbyEvents(double lat, double lng, double radiusKm) {
         double delta = radiusKm / 111.0;
         List<Event> events = eventRepository.findNearby(
