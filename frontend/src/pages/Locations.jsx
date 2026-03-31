@@ -194,28 +194,12 @@ const toggleCard = async (loc) => {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
-            {role === "USER" && (
-              <Link
-                to="/request-host"
-                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100"
-              >
-                Become a host
-              </Link>
-            )}
             {role === "ADMIN" && (
               <Link
                 to="/admin"
                 className="rounded-xl border border-purple-200 bg-purple-50 text-purple-700 px-4 py-2 text-sm font-medium hover:bg-purple-100"
               >
                 Admin dashboard
-              </Link>
-            )}
-            {isHost && (
-              <Link
-                to="/host/create-event"
-                className="rounded-xl bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800"
-              >
-                Create event
               </Link>
             )}
             <button
@@ -225,19 +209,6 @@ const toggleCard = async (loc) => {
               Logout
             </button>
           </div>
-        </div>
-
-        {/* Nav tabs */}
-        <div className="mt-4 flex gap-2">
-          <span className="px-4 py-2 rounded-xl text-sm font-medium bg-slate-900 text-white">
-            Map & Recommendations
-          </span>
-          <Link
-            to="/events"
-            className="px-4 py-2 rounded-xl text-sm font-medium border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-          >
-            Events
-          </Link>
         </div>
 
         {err && (
@@ -250,7 +221,7 @@ const toggleCard = async (loc) => {
         <div className="mt-6 bg-white rounded-2xl shadow p-4">
           <form onSubmit={onSearch} className="flex gap-2 flex-wrap">
             <input
-              className="flex-1 min-w-[240px] rounded-xl border border-slate-200 px-3 py-2"
+              className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300"
               placeholder="Search city / address / place"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
@@ -326,7 +297,7 @@ const toggleCard = async (loc) => {
                   : "Getting your location..."}
               </div>
             </div>
-            <div className="h-[520px] rounded-xl overflow-hidden">
+            <div className="relative z-0 h-[520px] rounded-xl overflow-hidden">
               {center ? (
               <MapContainer
                 center={[center.lat, center.lng]}

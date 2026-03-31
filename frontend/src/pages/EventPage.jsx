@@ -150,15 +150,6 @@ export default function EventsPage() {
           </div>
         </div>
 
-        <div className="mt-6 flex gap-2">
-          <Link to="/locations" className="px-4 py-2 rounded-xl text-sm font-medium border border-slate-200 bg-white text-slate-600 hover:bg-slate-50">
-            Map & Recommendations
-          </Link>
-          <span className="px-4 py-2 rounded-xl text-sm font-medium bg-slate-900 text-white">
-            Events
-          </span>
-        </div>
-
         {err && (
           <div className="mt-4 rounded-xl bg-red-50 text-red-700 px-4 py-3 text-sm">{err}</div>
         )}

@@ -13,6 +13,9 @@ public interface EventMemberRepository extends JpaRepository<EventMember, Long> 
     @Query("SELECT m FROM EventMember m WHERE m.event.id = :eventId AND m.status = :status")
     List<EventMember> findByEventIdAndStatus(@Param("eventId") Long eventId, @Param("status") EventMember.Status status);
 
+    @Query("SELECT m FROM EventMember m WHERE m.event.id = :eventId AND m.status = 'PENDING'")
+    List<EventMember> findPendingByEventId(@Param("eventId") Long eventId);
+
     @Query("SELECT m FROM EventMember m WHERE m.event.id = :eventId AND m.userId = :userId AND m.status = 'ACTIVE'")
     Optional<EventMember> findActiveByEventIdAndUserId(
             @Param("eventId") Long eventId,
@@ -28,10 +31,8 @@ public interface EventMemberRepository extends JpaRepository<EventMember, Long> 
     @Query("SELECT COUNT(m) FROM EventMember m WHERE m.event.id = :eventId AND m.status = :status")
     int countByEventIdAndStatus(@Param("eventId") Long eventId, @Param("status") EventMember.Status status);
 
-    // ✅ userId is a plain Long field so this derived query works fine
     List<EventMember> findByUserIdAndStatus(Long userId, EventMember.Status status);
 
-    // ✅ Added — needed by EventService.getJoinedEvents()
     List<EventMember> findByUserId(Long userId);
 
     @Query("SELECT m FROM EventMember m WHERE m.event.id = :eventId")

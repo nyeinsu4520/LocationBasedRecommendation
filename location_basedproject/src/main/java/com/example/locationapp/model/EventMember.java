@@ -8,9 +8,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 @Entity
 @Table(name = "event_members",
     uniqueConstraints = @UniqueConstraint(columnNames = {"event_id", "user_id"}))
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
-public class EventMember {
-    public enum Status {ACTIVE, LEFT}
+    @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+    public class EventMember {
+    public enum Status { PENDING, ACTIVE, LEFT, DECLINED, REMOVED }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

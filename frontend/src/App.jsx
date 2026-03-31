@@ -1,4 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {useState} from "react";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Locations from "./pages/Locations";
@@ -7,6 +8,9 @@ import CreateEventPage from "./pages/CreateEventPage";
 import RequestHostPage from "./pages/RequestHostPage";
 import AdminDashboard from "./pages/AdminDashboard";
 import EventsPage from "./pages/EventPage"; 
+import Header from "./pages/components/Header";
+import Footer from "./pages/components/Footer";
+import HostDashboard from "./pages/HostDashBoard.jsx";
 
 function Protected({ children }) {
   const token = localStorage.getItem("token");
@@ -30,10 +34,25 @@ function AdminOnly({ children }) {
   if (role !== "ADMIN") return <Navigate to="/locations" replace />;
   return children;
 }
+function AppLayout({ children, onOpenHostDashboard }) {
+  return (
+    <div className="min-h-screen flex flex-col bg-slate-50">
+      <Header onOpenHostDashboard={onOpenHostDashboard} />
+      <main className="flex-1">{children}</main>
+      <Footer />
+    </div>
+  );
+}
 
 export default function App() {
+  const [hostDashboardOpen, setHostDashboardOpen] = useState(false);
+  const token = localStorage.getItem("token");
   return (
     <BrowserRouter>
+      <HostDashboard
+        open={hostDashboardOpen}
+        onClose={() => setHostDashboardOpen(false)}
+      />
       <Routes>
         <Route path="/" element={<Navigate to="/locations" replace />} />
         <Route path="/login" element={<Login />} />
@@ -42,7 +61,9 @@ export default function App() {
           path="/locations"
           element={
             <Protected>
+              <AppLayout onOpenHostDashboard={() => setHostDashboardOpen(true)}>
               <Locations />
+            </AppLayout>
             </Protected>
           }
         />
@@ -51,7 +72,9 @@ export default function App() {
           path="/events"
           element={
             <Protected>
+              <AppLayout onOpenHostDashboard={() => setHostDashboardOpen(true)}>
               <EventsPage />
+            </AppLayout>
             </Protected>
           }
         />
@@ -59,7 +82,9 @@ export default function App() {
           path="/events/:eventId/chat"
           element={
             <Protected>
+              <AppLayout onOpenHostDashboard={() => setHostDashboardOpen(true)}>
               <ChatPage />
+            </AppLayout>
             </Protected>
           }
         />
@@ -67,7 +92,9 @@ export default function App() {
           path="/host/create-event"
           element={
             <HostOnly>
+              <AppLayout onOpenHostDashboard={() => setHostDashboardOpen(true)}>
               <CreateEventPage />
+            </AppLayout>
             </HostOnly>
           }
         />
@@ -75,7 +102,9 @@ export default function App() {
           path="/request-host"
           element={
             <Protected>
+              <AppLayout onOpenHostDashboard={() => setHostDashboardOpen(true)}>
               <RequestHostPage />
+            </AppLayout>
             </Protected>
           }
         />
@@ -83,7 +112,9 @@ export default function App() {
           path="/admin"
           element={
             <AdminOnly>
+              <AppLayout onOpenHostDashboard={() => setHostDashboardOpen(true)}>
               <AdminDashboard />
+            </AppLayout>
             </AdminOnly>
           }
         />

@@ -101,4 +101,87 @@ public class EventController {
     public ResponseEntity<List<EventMember>> attendees(@PathVariable Long eventId) {
         return ResponseEntity.ok(eventService.getAttendees(eventId));
     }
+
+    @PostMapping("/{eventId}/request")
+    public ResponseEntity<?> requestJoin(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        try {
+            EventMember member = eventService.requestJoin(eventId, principal.getUserId());
+            return ResponseEntity.ok(member);
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{eventId}/approve/{userId}")
+    public ResponseEntity<?> approve(
+            @PathVariable Long eventId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        try {
+            return ResponseEntity.ok(eventService.approveRequest(eventId, userId, principal.getUserId()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{eventId}/decline/{userId}")
+    public ResponseEntity<?> decline(
+            @PathVariable Long eventId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        try {
+            return ResponseEntity.ok(eventService.declineRequest(eventId, userId, principal.getUserId()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/{eventId}/remove/{userId}")
+    public ResponseEntity<?> removeMember(
+            @PathVariable Long eventId,
+            @PathVariable Long userId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        try {
+            eventService.removeMember(eventId, userId, principal.getUserId());
+            return ResponseEntity.noContent().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/{eventId}/pending")
+    public ResponseEntity<List<EventMember>> pending(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        return ResponseEntity.ok(eventService.getPendingRequests(eventId));
+    }
+
+    @GetMapping("/{eventId}/member-status")
+    public ResponseEntity<String> memberStatus(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        EventMember.Status status = eventService.getMemberStatus(eventId, principal.getUserId());
+        return ResponseEntity.ok(status != null ? status.name() : "NONE");
+    }
+
+    @PatchMapping("/{eventId}/cancel")
+    public ResponseEntity<?> cancelEvent(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        try {
+            eventService.cancelEvent(eventId, principal.getUserId());
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
 }

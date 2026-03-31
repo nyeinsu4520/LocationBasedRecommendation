@@ -34,4 +34,29 @@ export const eventsApi = {
   // ✅ Check if current user is already a member of this event
 isMember: async (eventId) =>
     (await api.get(`/api/events/${eventId}/is-member`)).data,
+
+requestJoin: async (eventId) =>
+    (await api.post(`/api/events/${eventId}/request`, null)).data,
+
+approveRequest: async (eventId, userId) =>
+    (await api.post(`/api/events/${eventId}/approve/${userId}`)).data,
+
+declineRequest: async (eventId, userId) =>
+    (await api.post(`/api/events/${eventId}/decline/${userId}`)).data,
+
+removeMember: async (eventId, userId) =>
+    (await api.post(`/api/events/${eventId}/remove/${userId}`)).data,
+
+getPendingRequests: async (eventId) =>
+    (await api.get(`/api/events/${eventId}/pending`)).data,
+
+getMemberStatus: async (eventId) =>
+    (await api.get(`/api/events/${eventId}/member-status`)).data,
+
+
+cancel: async (eventId) =>
+    (await api.patch(`/api/events/${eventId}/cancel`)).data,
+
+hostEvents: async () =>
+    (await api.get("/api/events/my-events")).data,
 };
