@@ -17,12 +17,13 @@ public class EventSummaryDto {
     private int spotsLeft;    
     private Long hostId;
     private String status;
+    private String cancelReason;
 
     public EventSummaryDto(Long id, String title, String description,
                            String locationName, String address,
                            Double latitude, Double longitude,
                            Instant eventDate, int maxAttendees,
-                           int attendeeCount, Long hostId, String status) {
+                           int attendeeCount, Long hostId, String status,String cancelReason) {
         this.id = id;
         this.title = title;
         this.description = description;
@@ -36,6 +37,7 @@ public class EventSummaryDto {
         this.spotsLeft = maxAttendees - attendeeCount; 
         this.hostId = hostId;
         this.status = status;
+        this.cancelReason = cancelReason;
     }
 
     public Long getId() { return id; }
@@ -51,4 +53,5 @@ public class EventSummaryDto {
     public int getSpotsLeft() { return spotsLeft; }
     public Long getHostId() { return hostId; }
     public String getStatus() { return status; }
+    public void setCancelReason(String cancelReason) { this.cancelReason = cancelReason; }
 }

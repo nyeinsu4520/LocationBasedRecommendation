@@ -1,10 +1,15 @@
 import { useState } from "react";
 import { authApi } from "../api/authApi";
+import { useSearchParams } from "react-router-dom";
+import logo from "./images/logo.png";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
+  const [searchParams] = useSearchParams();
+  const verified = searchParams.get("verified");
+  const verifyError = searchParams.get("error");
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -20,10 +25,32 @@ export default function Login() {
       setErr("Login failed. Check email/password.");
     }
   };
+    {verified && (
+      <div className="mb-4 rounded-xl bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-700">
+          Email verified! You can now log in.
+      </div>
+  )}
+
+  {verifyError && (
+      <div className="mb-4 rounded-xl bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+          Invalid or expired verification link. Please register again.
+      </div>
+  )}
 
   return (
     <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
       <div className="w-full max-w-md bg-white rounded-2xl shadow p-6">
+          <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-8 rounded-xl flex items-center justify-center">
+                    <img
+                                src={logo}
+                                alt="Evanto"
+                                className="h-8 w-8 object-contain"
+                                onError={(e) => { e.target.style.display = "none"; }}
+                              />
+                  </div>
+                  <span className="text-lg font-bold text-slate-900">Evanto</span>
+                </div>
         <h1 className="text-2xl font-semibold text-slate-900">Login</h1>
         <p className="text-slate-500 mt-1">Welcome back. Please sign in.</p>
 

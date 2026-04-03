@@ -1,7 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { eventsApi } from "../../api/eventsApi";
 import logo from "../images/logo.png";
+import { notificationApi } from "../../api/notificationApi";
+
 export default function Header({ onOpenHostDashboard }) {
   const location = useLocation();
   const navigate = useNavigate();
@@ -10,6 +12,7 @@ export default function Header({ onOpenHostDashboard }) {
   const [notifOpen, setNotifOpen] = useState(false);
   const userMenuRef = useRef(null);
   const notifRef = useRef(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const role = localStorage.getItem("role");
   const name = localStorage.getItem("name");
@@ -30,29 +33,54 @@ export default function Header({ onOpenHostDashboard }) {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  useEffect(() => {
-    if (!isHost) return;
-    const loadNotifications = async () => {
-      try {
-        const events = await eventsApi.hostEvents();
-        let pending = [];
-        for (const event of events) {
-          try {
-            const requests = await eventsApi.getPendingRequests(event.id);
-            if (requests.length > 0) {
-              pending.push({
-                eventId: event.id,
-                eventTitle: event.title,
-                count: requests.length,
-              });
+const loadNotifications = useCallback(async () => {
+    try {
+        const data = await notificationApi.getUnread();
+        console.log("==> Unread notifications:", data);
+        const grouped = data.reduce((acc, n) => {
+            const existing = acc.find((x) => x.eventId === n.eventId);
+            if (existing) {
+                existing.count++;
+                existing.messages.push(n.message);
+            } else {
+                acc.push({
+                    eventId: n.eventId,
+                    eventTitle: n.eventTitle,
+                    count: 1,
+                    messages: [n.message],
+                    type: n.type,
+                });
             }
-          } catch {}
-        }
-        setNotifications(pending);
-      } catch {}
-    };
+            return acc;
+        }, []);
+        setNotifications(grouped);
+        setUnreadCount(data.length);
+    } catch (e) {
+        console.error("Failed to load notifications:", e);
+    }
+}, []);
+
+useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
     loadNotifications();
-  }, [isHost]);
+    const interval = setInterval(loadNotifications, 30000);
+    return () => clearInterval(interval);
+}, [loadNotifications]);
+
+const handleBellClick = async () => {
+    const opening = !notifOpen;
+    setNotifOpen(opening);
+
+    if (opening && unreadCount > 0) {
+        setTimeout(async () => {
+            try {
+                await notificationApi.markRead();
+                setUnreadCount(0); 
+            } catch {}
+        }, 2000);
+    }
+};
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -63,7 +91,6 @@ export default function Header({ onOpenHostDashboard }) {
   };
 
   const isActive = (path) => location.pathname === path;
-
   const totalNotifications = notifications.reduce((sum, n) => sum + n.count, 0);
 
   return (
@@ -71,15 +98,13 @@ export default function Header({ onOpenHostDashboard }) {
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between gap-4">
 
         <Link to="/locations" className="flex items-center gap-2.5 shrink-0">
-          <img 
+          <img
             src={logo}
             alt="Evanto"
             className="h-8 w-8 object-contain"
             onError={(e) => { e.target.style.display = "none"; }}
-            />
-          <span className="text-xl font-bold text-slate-900 tracking-tight">
-            Evanto
-          </span>
+          />
+          <span className="text-xl font-bold text-slate-900 tracking-tight">Evanto</span>
           {isPremium && (
             <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
               Premium
@@ -87,14 +112,11 @@ export default function Header({ onOpenHostDashboard }) {
           )}
         </Link>
 
-        {/* Nav links */}
         <nav className="hidden md:flex items-center gap-1">
           <Link
             to="/locations"
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-              isActive("/locations")
-                ? "bg-slate-900 text-white"
-                : "text-slate-600 hover:bg-slate-100"
+              isActive("/locations") ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
             }`}
           >
             Map
@@ -102,9 +124,7 @@ export default function Header({ onOpenHostDashboard }) {
           <Link
             to="/events"
             className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-              isActive("/events")
-                ? "bg-slate-900 text-white"
-                : "text-slate-600 hover:bg-slate-100"
+              isActive("/events") ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
             }`}
           >
             Events
@@ -113,9 +133,7 @@ export default function Header({ onOpenHostDashboard }) {
             <Link
               to="/host/create-event"
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${
-                isActive("/host/create-event")
-                  ? "bg-slate-900 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
+                isActive("/host/create-event") ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100"
               }`}
             >
               Create Event
@@ -123,59 +141,84 @@ export default function Header({ onOpenHostDashboard }) {
           )}
         </nav>
 
-        {/* Right side */}
         <div className="flex items-center gap-2">
 
-          {/* Notifications bell */}
-          <div className="relative" ref={notifRef}>
-            <button
-              onClick={() => setNotifOpen(!notifOpen)}
-              className="relative p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-              {totalNotifications > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
-                  {totalNotifications}
-                </span>
-              )}
-            </button>
 
-            {notifOpen && (
-              <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
-                <div className="px-4 py-3 border-b border-slate-100">
-                  <p className="text-sm font-semibold text-slate-900">Notifications</p>
-                </div>
-                {notifications.length === 0 ? (
-                  <div className="px-4 py-6 text-center text-sm text-slate-500">
-                    No new notifications
-                  </div>
-                ) : (
-                  <div>
-                    {notifications.map((n) => (
-                      <button
-                        key={n.eventId}
-                        onClick={() => {
-                          navigate(`/events/${n.eventId}/chat`);
-                          setNotifOpen(false);
-                        }}
-                        className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0"
-                      >
-                        <p className="text-sm font-medium text-slate-900">
-                          {n.count} pending request{n.count > 1 ? "s" : ""}
-                        </p>
-                        <p className="text-xs text-slate-500 mt-0.5">{n.eventTitle}</p>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+        <div className="relative" ref={notifRef}>
+        <button
+            onClick={handleBellClick}
+            className="relative p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+        >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+
+            {unreadCount > 0 && (
+            <span className="absolute -top-0.5 -right-0.5 h-4 w-4 rounded-full bg-red-500 text-white text-xs flex items-center justify-center font-bold">
+                {unreadCount > 9 ? "9+" : unreadCount}
+            </span>
             )}
-          </div>
+        </button>
 
-          {/* User menu */}
+        {notifOpen && (
+            <div className="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-lg border border-slate-200 overflow-hidden">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+                <p className="text-sm font-semibold text-slate-900">Notifications</p>
+                {unreadCount > 0 && (
+                <span className="text-xs text-slate-400">
+                    {unreadCount} unread
+                </span>
+                )}
+            </div>
+            {notifications.length === 0 ? (
+                <div className="px-4 py-6 text-center text-sm text-slate-500">
+                No new notifications
+                </div>
+            ) : (
+                <div className="max-h-80 overflow-y-auto">
+                {notifications.map((n) => (
+                    <button
+                    key={n.eventId}
+                    onClick={() => {
+                        navigate(`/events/${n.eventId}/chat`);
+                        setNotifOpen(false);
+                    }}
+                    className="w-full text-left px-4 py-3 hover:bg-slate-50 border-b border-slate-100 last:border-0"
+                    >
+                    
+                    <p className="text-xs text-slate-500 mt-0.5 ml-6">
+                        {n.messages[0]}
+                    </p>
+                    {n.count > 1 && (
+                        <p className="text-xs text-slate-400 ml-6">
+                        +{n.count - 1} more
+                        </p>
+                    )}
+                    </button>
+                ))}
+                </div>
+            )}
+            {/* ✅ Mark all read button */}
+            {notifications.length > 0 && (
+                <div className="px-4 py-2 border-t border-slate-100">
+                <button
+                    onClick={async () => {
+                    await notificationApi.markRead();
+                    setUnreadCount(0);
+                    setNotifications([]);
+                    setNotifOpen(false);
+                    }}
+                    className="text-xs text-slate-400 hover:text-slate-600"
+                >
+                    Mark all as read
+                </button>
+                </div>
+            )}
+            </div>
+        )}
+        </div>
+
           <div className="relative" ref={userMenuRef}>
             <button
               onClick={() => setUserMenuOpen(!userMenuOpen)}
@@ -227,7 +270,7 @@ export default function Header({ onOpenHostDashboard }) {
                   </Link>
                 )}
 
-                {!isHost && (
+                {!isHost && !isAdmin && (
                   <Link
                     to="/request-host"
                     onClick={() => setUserMenuOpen(false)}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { eventsApi } from "../api/eventsApi";
+import { paymentApi } from "../api/paymentApi";
 
 export default function HostDashboard({ open, onClose }) {
   const [tab, setTab] = useState("events");
@@ -9,6 +10,9 @@ export default function HostDashboard({ open, onClose }) {
   const [pendingMap, setPendingMap] = useState({});
   const [expandedEvent, setExpandedEvent] = useState(null);
   const [err, setErr] = useState("");
+  const [cancelDialog, setCancelDialog] = useState({ open: false, eventId: null });
+  const [cancelReason, setCancelReason] = useState("");
+  const [cancelErr, setCancelErr] = useState("");
 
   const role = localStorage.getItem("role");
   const name = localStorage.getItem("name");
@@ -24,7 +28,6 @@ export default function HostDashboard({ open, onClose }) {
       setLoading(true);
       const data = await eventsApi.hostEvents();
       setEvents(Array.isArray(data) ? data : []);
-      // Load pending requests for each event
       const pending = {};
       for (const event of data) {
         try {
@@ -60,13 +63,37 @@ export default function HostDashboard({ open, onClose }) {
     } catch {}
   };
 
-  const handleCancel = async (eventId) => {
-    if (!window.confirm("Cancel this event?")) return;
+  const openCancelDialog = (eventId) => {
+    setCancelDialog({ open: true, eventId });
+    setCancelReason("");
+    setCancelErr("");
+  };
+
+  const handleCancel = async () => {
+    if (!cancelReason.trim()) {
+      setCancelErr("Please provide a reason for cancellation.");
+      return;
+    }
     try {
-      await eventsApi.cancel(eventId);
-      setEvents((prev) => prev.filter((e) => e.id !== eventId));
+      await eventsApi.cancel(cancelDialog.eventId, cancelReason);
+      // ✅ Update status to CANCEL_REQUESTED — not cancelled yet
+      setEvents((prev) => prev.map((e) =>
+        e.id === cancelDialog.eventId
+          ? { ...e, status: "CANCEL_REQUESTED" }
+          : e
+      ));
+      setCancelDialog({ open: false, eventId: null });
     } catch {
-      setErr("Failed to cancel event.");
+      setCancelErr("Failed to request cancellation.");
+    }
+  };
+
+  const handleUpgrade = async () => {
+    try {
+      const { url } = await paymentApi.createCheckoutSession();
+      window.location.href = url;
+    } catch (err) {
+      setErr("Failed to start checkout. Please try again.");
     }
   };
 
@@ -74,39 +101,27 @@ export default function HostDashboard({ open, onClose }) {
 
   return (
     <>
-      {/* ✅ Backdrop */}
-      <div
-        className="fixed inset-0 bg-black/40 z-40"
-        onClick={onClose}
-      />
+      <div className="fixed inset-0 bg-black/40 z-40" onClick={onClose} />
 
-      {/* ✅ Sidebar */}
       <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-2xl z-50 flex flex-col">
 
-        {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
           <div>
             <h2 className="text-lg font-semibold text-slate-900">Host Dashboard</h2>
             <p className="text-xs text-slate-500">{name}</p>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl hover:bg-slate-100 text-slate-600"
-          >
+          <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 text-slate-600">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>
         </div>
 
-        {/* Tabs */}
         <div className="flex border-b border-slate-200">
           <button
             onClick={() => setTab("events")}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
-              tab === "events"
-                ? "border-b-2 border-slate-900 text-slate-900"
-                : "text-slate-500 hover:text-slate-700"
+              tab === "events" ? "border-b-2 border-slate-900 text-slate-900" : "text-slate-500 hover:text-slate-700"
             }`}
           >
             My Events
@@ -114,19 +129,15 @@ export default function HostDashboard({ open, onClose }) {
           <button
             onClick={() => setTab("account")}
             className={`flex-1 py-3 text-sm font-medium transition-colors ${
-              tab === "account"
-                ? "border-b-2 border-slate-900 text-slate-900"
-                : "text-slate-500 hover:text-slate-700"
+              tab === "account" ? "border-b-2 border-slate-900 text-slate-900" : "text-slate-500 hover:text-slate-700"
             }`}
           >
             Account & Premium
           </button>
         </div>
 
-        {/* Content */}
         <div className="flex-1 overflow-y-auto p-5">
 
-          {/* ✅ My Events tab */}
           {tab === "events" && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
@@ -170,23 +181,41 @@ export default function HostDashboard({ open, onClose }) {
 
                 return (
                   <div key={event.id} className="rounded-xl border border-slate-200 overflow-hidden">
-                    {/* Event header */}
                     <div className="p-4">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="font-medium text-slate-900 truncate">{event.title}</div>
                           <div className="text-xs text-slate-500 mt-0.5">{event.locationName}</div>
+                          {/* ✅ Show cancel reason if pending */}
+                          {event.status === "CANCEL_REQUESTED" && event.cancelReason && (
+                            <div className="mt-1 text-xs text-amber-600 bg-amber-50 rounded-lg px-2 py-1">
+                              Reason: {event.cancelReason}
+                            </div>
+                          )}
+                          {/* ✅ Show cancel reason if cancelled */}
+                          {event.status === "CANCELLED" && event.cancelReason && (
+                            <div className="mt-1 text-xs text-red-600 bg-red-50 rounded-lg px-2 py-1">
+                              Cancelled: {event.cancelReason}
+                            </div>
+                          )}
                         </div>
+                        <Link
+                          to={`/host/edit-event/${event.id}`}
+                          onClick={onClose}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50"
+                        >
+                          Edit
+                        </Link>
+                        {/* ✅ Updated status badge */}
                         <span className={`shrink-0 text-xs font-medium px-2 py-0.5 rounded-full ${
-                          event.status === "ACTIVE"
-                            ? "bg-green-100 text-green-700"
-                            : "bg-slate-100 text-slate-600"
+                          event.status === "ACTIVE" ? "bg-green-100 text-green-700"
+                          : event.status === "CANCEL_REQUESTED" ? "bg-amber-100 text-amber-700"
+                          : "bg-red-100 text-red-600"
                         }`}>
-                          {event.status}
+                          {event.status === "CANCEL_REQUESTED" ? "Pending cancellation" : event.status}
                         </span>
                       </div>
 
-                      {/* Stats */}
                       <div className="mt-3 flex gap-3">
                         <div className="text-center">
                           <div className="text-base font-bold text-slate-900">{event.attendeeCount}</div>
@@ -206,8 +235,7 @@ export default function HostDashboard({ open, onClose }) {
                         </div>
                       </div>
 
-                      {/* Actions */}
-                      <div className="mt-3 flex gap-2">
+                      <div className="mt-3 flex gap-2 items-center">
                         <Link
                           to={`/events/${event.id}/chat`}
                           onClick={onClose}
@@ -226,31 +254,35 @@ export default function HostDashboard({ open, onClose }) {
                             </span>
                           )}
                         </button>
+
+                        {/* ✅ Show Cancel only if ACTIVE */}
                         {event.status === "ACTIVE" && (
                           <button
-                            onClick={() => handleCancel(event.id)}
+                            onClick={() => openCancelDialog(event.id)}
                             className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
                           >
                             Cancel
                           </button>
                         )}
+
+                        {/* ✅ Show awaiting message if CANCEL_REQUESTED */}
+                        {event.status === "CANCEL_REQUESTED" && (
+                          <span className="text-xs text-amber-600 font-medium">
+                            Awaiting admin
+                          </span>
+                        )}
                       </div>
                     </div>
 
-                    {/* ✅ Pending requests */}
                     {isExpanded && (
                       <div className="border-t border-slate-100 bg-slate-50 p-3 space-y-2">
-                        <p className="text-xs font-semibold text-slate-700 mb-2">
-                          Pending requests
-                        </p>
+                        <p className="text-xs font-semibold text-slate-700 mb-2">Pending requests</p>
                         {pending.length === 0 ? (
                           <p className="text-xs text-slate-500">No pending requests</p>
                         ) : (
                           pending.map((req) => (
                             <div key={req.id} className="flex items-center justify-between bg-white rounded-lg p-2.5 border border-slate-200">
-                              <div className="text-sm text-slate-700">
-                                User #{req.userId}
-                              </div>
+                              <div className="text-sm text-slate-700">User #{req.userId}</div>
                               <div className="flex gap-1.5">
                                 <button
                                   onClick={() => handleApprove(event.id, req.userId)}
@@ -276,11 +308,8 @@ export default function HostDashboard({ open, onClose }) {
             </div>
           )}
 
-          {/* ✅ Account & Premium tab */}
           {tab === "account" && (
             <div className="space-y-5">
-
-              {/* Account info */}
               <div className="rounded-xl border border-slate-200 p-4">
                 <h3 className="text-sm font-semibold text-slate-900 mb-3">Account</h3>
                 <div className="space-y-2">
@@ -294,46 +323,78 @@ export default function HostDashboard({ open, onClose }) {
                       {role?.toLowerCase().replace("_", " ")}
                     </span>
                   </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-500">Plan</span>
+                    <span className={`font-medium ${isPremium ? "text-purple-700" : "text-slate-600"}`}>
+                      {isPremium ? "Premium" : "Free"}
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Premium section */}
               {isPremium ? (
                 <div className="rounded-xl border border-purple-200 bg-purple-50 p-4">
                   <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">⭐</span>
                     <h3 className="text-sm font-semibold text-purple-900">Premium Host</h3>
                   </div>
-                  <p className="text-xs text-purple-700">
+                  <p className="text-xs text-purple-700 mb-3">
                     You have premium access — up to 50 attendees per event.
                   </p>
+                  <div className="bg-white rounded-lg p-3 border border-purple-200 space-y-1.5">
+                    <div className="flex items-center gap-2 text-xs text-purple-800">
+                      <span>✅</span> Up to 50 attendees per event
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-purple-800">
+                      <span>✅</span> Priority support
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-purple-800">
+                      <span>✅</span> £4.99/month — cancel anytime
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="rounded-xl border border-amber-200 bg-amber-50 p-4">
-                  <div className="flex items-center gap-2 mb-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-lg">🚀</span>
                     <h3 className="text-sm font-semibold text-amber-900">Upgrade to Premium</h3>
                   </div>
                   <p className="text-xs text-amber-700 mb-3">
-                    Get up to 50 attendees per event instead of 10.
+                    Host bigger events with up to 50 attendees.
                   </p>
-                  <div className="bg-white rounded-lg p-3 border border-amber-200 mb-3">
-                    <div className="flex justify-between text-sm mb-1">
-                      <span className="text-slate-600">Free plan</span>
-                      <span className="font-medium">10 attendees</span>
+                  <div className="bg-white rounded-lg border border-amber-200 overflow-hidden mb-3">
+                    <div className="grid grid-cols-3 text-xs font-semibold text-slate-500 px-3 py-2 bg-slate-50 border-b border-amber-100">
+                      <span>Feature</span>
+                      <span className="text-center">Free</span>
+                      <span className="text-center text-purple-700">Premium</span>
                     </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="text-slate-600">Premium plan</span>
-                      <span className="font-bold text-purple-700">50 attendees</span>
+                    <div className="grid grid-cols-3 text-xs px-3 py-2 border-b border-slate-100">
+                      <span className="text-slate-600">Attendees</span>
+                      <span className="text-center text-slate-700">10</span>
+                      <span className="text-center font-bold text-purple-700">50</span>
+                    </div>
+                    <div className="grid grid-cols-3 text-xs px-3 py-2 border-b border-slate-100">
+                      <span className="text-slate-600">Events</span>
+                      <span className="text-center text-slate-700">Unlimited</span>
+                      <span className="text-center font-bold text-purple-700">Unlimited</span>
+                    </div>
+                    <div className="grid grid-cols-3 text-xs px-3 py-2">
+                      <span className="text-slate-600">Price</span>
+                      <span className="text-center text-slate-700">Free</span>
+                      <span className="text-center font-bold text-purple-700">£4.99/mo</span>
                     </div>
                   </div>
-                  <Link
-                    to="/request-host"
-                    onClick={onClose}
-                    className="block w-full text-center text-sm px-4 py-2.5 rounded-xl bg-amber-600 text-white hover:bg-amber-700 font-medium"
+                  {err && (
+                    <div className="mb-3 text-xs text-red-600 bg-red-50 rounded-lg px-3 py-2">{err}</div>
+                  )}
+                  <button
+                    onClick={handleUpgrade}
+                    className="w-full text-center text-sm px-4 py-2.5 rounded-xl bg-amber-600 text-white hover:bg-amber-700 font-medium transition-colors"
                   >
-                    Request Premium Upgrade
-                  </Link>
+                    Upgrade — £4.99/month
+                  </button>
                   <p className="text-xs text-amber-600 mt-2 text-center">
-                    Admin reviews and approves within 24 hours
+                    Secure payment via Stripe · Cancel anytime
                   </p>
                 </div>
               )}
@@ -341,6 +402,42 @@ export default function HostDashboard({ open, onClose }) {
           )}
         </div>
       </div>
+
+      {/* ✅ Cancel dialog */}
+      {cancelDialog.open && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 100 }}>
+          <div className="bg-white rounded-2xl p-6 max-w-sm w-full mx-4 shadow-xl">
+            <h3 className="text-lg font-semibold text-slate-900">Request event cancellation</h3>
+            <p className="text-sm text-slate-500 mt-1">
+              Your request will be sent to the admin for approval.
+            </p>
+            <textarea
+              value={cancelReason}
+              onChange={(e) => setCancelReason(e.target.value)}
+              placeholder="e.g. Venue unavailable, weather conditions..."
+              rows={3}
+              className="mt-3 w-full rounded-xl border border-slate-200 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300 resize-none"
+            />
+            {cancelErr && (
+              <p className="mt-2 text-xs text-red-600">{cancelErr}</p>
+            )}
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => setCancelDialog({ open: false, eventId: null })}
+                className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium hover:bg-slate-50"
+              >
+                Keep event
+              </button>
+              <button
+                onClick={handleCancel}
+                className="flex-1 rounded-xl bg-red-600 text-white px-4 py-2.5 text-sm font-medium hover:bg-red-700"
+              >
+                Send request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }

@@ -26,4 +26,16 @@ export const adminApi = {
 
   demoteUser: async (id) =>
     (await api.post(`/api/admin/users/${id}/demote`)).data,
+
+    getAllEvents: async () =>
+    (await api.get("/api/admin/events")).data,
+
+getCancelRequests: async () =>
+    (await api.get("/api/admin/cancel-requests")).data,
+
+approveCancelRequest: async (eventId) =>
+    (await api.post(`/api/admin/events/${eventId}/approve-cancel`)).data,
+
+rejectCancelRequest: async (eventId) =>
+    (await api.post(`/api/admin/events/${eventId}/reject-cancel`)).data,
 };

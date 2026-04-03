@@ -1,62 +1,77 @@
 import { api } from "./client";
 
 export const eventsApi = {
-  // Get nearby host-created events
+  // ✅ Nearby events
   nearby: async (lat, lng, radiusKm) =>
     (await api.get("/api/events/nearby", {
       params: { lat, lng, radiusKm },
     })).data,
 
-  // Join an event (only works if host created it)
+  // ✅ Join an event
   join: async (eventId) =>
     (await api.post(`/api/events/${eventId}/join`, null)).data,
 
-  // Leave an event
+  // ✅ Leave an event
   leave: async (eventId) =>
     (await api.post(`/api/events/${eventId}/leave`, null)).data,
 
-  // Events the logged-in user has joined
+  // ✅ Events the logged-in user has joined
   joined: async () =>
     (await api.get("/api/events/joined")).data,
 
-  // Who is attending an event
+  // ✅ Who is attending an event
   presence: async (eventId) =>
     (await api.get(`/api/events/${eventId}/attendees`)).data,
 
-  // Host: create an event
+  // ✅ Create an event
   create: async (event) =>
     (await api.post("/api/events", event)).data,
 
-  // Host: their own events
-  myEvents: async () =>
+  // ✅ Host's own events — removed duplicate myEvents
+  hostEvents: async () =>
     (await api.get("/api/events/my-events")).data,
 
-  // ✅ Check if current user is already a member of this event
-isMember: async (eventId) =>
+  // ✅ Check membership
+  isMember: async (eventId) =>
     (await api.get(`/api/events/${eventId}/is-member`)).data,
 
-requestJoin: async (eventId) =>
+  // ✅ Request to join
+  requestJoin: async (eventId) =>
     (await api.post(`/api/events/${eventId}/request`, null)).data,
 
-approveRequest: async (eventId, userId) =>
+  // ✅ Approve request
+  approveRequest: async (eventId, userId) =>
     (await api.post(`/api/events/${eventId}/approve/${userId}`)).data,
 
-declineRequest: async (eventId, userId) =>
+  // ✅ Decline request
+  declineRequest: async (eventId, userId) =>
     (await api.post(`/api/events/${eventId}/decline/${userId}`)).data,
 
-removeMember: async (eventId, userId) =>
+  // ✅ Remove member
+  removeMember: async (eventId, userId) =>
     (await api.post(`/api/events/${eventId}/remove/${userId}`)).data,
 
-getPendingRequests: async (eventId) =>
+  // ✅ Get pending requests
+  getPendingRequests: async (eventId) =>
     (await api.get(`/api/events/${eventId}/pending`)).data,
 
-getMemberStatus: async (eventId) =>
+  // ✅ Get member status
+  getMemberStatus: async (eventId) =>
     (await api.get(`/api/events/${eventId}/member-status`)).data,
 
+  // ✅ Cancel event
+  cancel: async (eventId, reason) =>
+    (await api.post(`/api/events/${eventId}/cancel`, { reason })).data,
 
-cancel: async (eventId) =>
-    (await api.patch(`/api/events/${eventId}/cancel`)).data,
+  // ✅ Get single event by id
+  getById: async (eventId) =>
+    (await api.get(`/api/events/${eventId}`)).data,
 
-hostEvents: async () =>
-    (await api.get("/api/events/my-events")).data,
+  // ✅ Update event
+  update: async (eventId, data) =>
+    (await api.put(`/api/events/${eventId}`, data)).data,
+
+
+
+
 };

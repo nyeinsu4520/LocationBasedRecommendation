@@ -11,6 +11,9 @@ import EventsPage from "./pages/EventPage";
 import Header from "./pages/components/Header";
 import Footer from "./pages/components/Footer";
 import HostDashboard from "./pages/HostDashBoard.jsx";
+import PaymentSuccess from "./pages/PaymentSuccess";
+import PaymentCancel from "./pages/PaymentCancel";
+import EditEventPage from "./pages/EditEventPage.jsx"
 
 function Protected({ children }) {
   const token = localStorage.getItem("token");
@@ -118,6 +121,15 @@ export default function App() {
             </AdminOnly>
           }
         />
+        <Route path="/host/edit-event/:eventId" element={
+        <HostOnly>
+          <AppLayout onOpenHostDashboard={() => setHostDashboardOpen(true)}>
+            <EditEventPage />
+          </AppLayout>
+        </HostOnly>
+      } />
+        <Route path="/payment/success" element={<PaymentSuccess />} />
+        <Route path="/payment/cancel" element={<PaymentCancel />} />
       </Routes>
     </BrowserRouter>
   );

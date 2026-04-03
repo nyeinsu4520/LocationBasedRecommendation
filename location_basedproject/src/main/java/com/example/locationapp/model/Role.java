@@ -3,5 +3,6 @@ package com.example.locationapp.model;
 public enum Role {
     USER,
     ADMIN,
-    HOST
+    HOST,
+    HOST_PREMIUM
 }

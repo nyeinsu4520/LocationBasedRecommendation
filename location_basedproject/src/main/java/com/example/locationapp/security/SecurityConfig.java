@@ -34,24 +34,32 @@ public class SecurityConfig {
 public SecurityFilterChain filterChain(org.springframework.security.config.annotation.web.builders.HttpSecurity http) throws Exception {
 
     http
-        .csrf(csrf -> csrf.disable())
+        .csrf(csrf -> csrf
+        .ignoringRequestMatchers("/api/payments/webhook")
+        .disable()
+    )
         .cors(cors -> cors.configurationSource(request -> {
             CorsConfiguration config = new CorsConfiguration();
             config.setAllowedOrigins(List.of("http://localhost:5173"));
             config.setAllowedMethods(List.of("GET","POST","PUT","DELETE","OPTIONS"));
             config.setAllowedHeaders(List.of("*"));
             config.setAllowCredentials(true);
+            config.setMaxAge(3600L); 
             return config;
         }))
         .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
         .authorizeHttpRequests(auth -> auth
+                .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
+                .requestMatchers("/api/payments/webhook").permitAll() 
                 .requestMatchers("/api/recommendations/**").authenticated()
                 .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/host-requests/**").authenticated()
                 .requestMatchers("/api/chat/**").authenticated()
                 .requestMatchers("/api/locations/**").authenticated()
                 .requestMatchers("/api/events/**").authenticated()
+                .requestMatchers("/api/payments/**").authenticated()
+                .requestMatchers("/api/notifications/**").authenticated()
                 .requestMatchers("/ws", "/ws/**").permitAll()
                 .anyRequest().authenticated()
         );

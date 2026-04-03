@@ -5,12 +5,13 @@ import com.example.locationapp.model.EventMember;
 import com.example.locationapp.model.Role;
 import com.example.locationapp.security.UserPrincipal;
 import com.example.locationapp.service.EventService;
+import com.example.locationapp.dto.CancelEventRequest;
 import com.example.locationapp.dto.EventSummaryDto;
+import com.example.locationapp.model.User;
+import com.example.locationapp.repository.UserRepository;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
-
-
 import java.util.List;
 
 @RestController
@@ -18,22 +19,22 @@ import java.util.List;
 public class EventController {
 
     private final EventService eventService;
+    private final UserRepository userRepository;
 
-    public EventController(EventService eventService) {
+    public EventController(EventService eventService, UserRepository userRepository) {
         this.eventService = eventService;
+        this.userRepository = userRepository;
     }
 
-    // ✅ HOST: create an event
     @PostMapping
     public ResponseEntity<?> createEvent(
             @RequestBody Event event,
             @AuthenticationPrincipal UserPrincipal principal
     ) {
-        if (principal.getRole() != Role.HOST) {
+        if (principal.getRole() != Role.HOST && principal.getRole() != Role.HOST_PREMIUM) {
             return ResponseEntity.status(403).body("Only hosts can create events");
         }
-        // Premium check — extend this when you add premium logic
-        boolean isPremium = false;
+        boolean isPremium = principal.getRole() == Role.HOST_PREMIUM; 
         Event created = eventService.createEvent(event, principal.getUserId(), isPremium);
         return ResponseEntity.ok(created);
     }
@@ -172,14 +173,68 @@ public class EventController {
         return ResponseEntity.ok(status != null ? status.name() : "NONE");
     }
 
-    @PatchMapping("/{eventId}/cancel")
+    @PostMapping("/{eventId}/cancel")
     public ResponseEntity<?> cancelEvent(
             @PathVariable Long eventId,
-            @AuthenticationPrincipal UserPrincipal principal
-    ) {
+            @RequestBody(required = false) CancelEventRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
         try {
-            eventService.cancelEvent(eventId, principal.getUserId());
+            String reason = request != null ? request.getReason() : null;
+            boolean isAdmin = principal.getRole() == Role.ADMIN;
+            eventService.cancelEvent(eventId, principal.getUserId(), reason, isAdmin);
             return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+   
+    @PostMapping("/{eventId}/approve-cancel")
+    public ResponseEntity<?> approveCancel(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        try {
+            if (principal.getRole() != Role.ADMIN) {
+                return ResponseEntity.status(403).body("Only admin can approve cancellation");
+            }
+            eventService.approveCancellation(eventId);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+  
+    @PostMapping("/{eventId}/reject-cancel")
+    public ResponseEntity<?> rejectCancel(
+            @PathVariable Long eventId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        try {
+            if (principal.getRole() != Role.ADMIN) {
+                return ResponseEntity.status(403).body("Only admin can reject cancellation");
+            }
+            eventService.rejectCancellation(eventId);
+            return ResponseEntity.ok().build();
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(e.getMessage());
+        }
+    }
+
+
+    @GetMapping("/{eventId}")
+    public ResponseEntity<?> getEvent(@PathVariable Long eventId) {
+        return ResponseEntity.ok(eventService.getEventById(eventId));
+    }
+
+    @PutMapping("/{eventId}")
+    public ResponseEntity<?> updateEvent(
+            @PathVariable Long eventId,
+            @RequestBody Event updated,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        try {
+            boolean isPremium = principal.getRole() == Role.HOST_PREMIUM;
+            Event event = eventService.updateEvent(eventId, updated, principal.getUserId(), isPremium);
+            return ResponseEntity.ok(event);
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         }

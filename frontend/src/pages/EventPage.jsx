@@ -138,16 +138,6 @@ export default function EventsPage() {
             <h1 className="text-2xl font-semibold text-slate-900">Nearby Events</h1>
             <p className="text-slate-500 text-sm mt-1">Host-created events near you.</p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            {isHost && (
-              <Link to="/host/create-event" className="rounded-xl bg-slate-900 text-white px-4 py-2 text-sm font-medium hover:bg-slate-800">
-                Create event
-              </Link>
-            )}
-            <button onClick={logout} className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-medium hover:bg-slate-100">
-              Logout
-            </button>
-          </div>
         </div>
 
         {err && (

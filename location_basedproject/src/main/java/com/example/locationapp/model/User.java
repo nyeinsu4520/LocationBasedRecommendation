@@ -32,6 +32,12 @@ public class User {
     @Column(nullable = false)
     private Status status = Status.ACTIVE;
 
+    @Column(name = "verification_token")
+    private String verificationToken;
+
+    @Column(name = "email_verified")
+    private boolean emailVerified = false;
+
     public User() {}
 
     public User(String email, String passwordHash, String name, String phoneNumber, Role role) {
@@ -62,5 +68,11 @@ public class User {
 
     public Status getStatus() {return status;}
     public void setStatus(Status status) {this.status = status;}
+
+    public String getVerificationToken() { return verificationToken; }
+    public void setVerificationToken(String verificationToken) { this.verificationToken = verificationToken; }
+    
+    public boolean isEmailVerified() { return emailVerified; }
+    public void setEmailVerified(boolean emailVerified) { this.emailVerified = emailVerified; }
 
 }

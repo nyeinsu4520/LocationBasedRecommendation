@@ -9,7 +9,7 @@ import java.time.Instant;
 @JsonIgnoreProperties({"hibernateLazyInitializer","handler"})
 public class Event {
     
-    public enum Status {ACTIVE,CANCELLED,COMPLETED}
+    public enum Status { ACTIVE, CANCEL_REQUESTED, CANCELLED, COMPLETED }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,11 +25,13 @@ public class Event {
     private Instant createdAt = Instant.now();
     private int maxAttendees = 10;
 
+    @Column(name = "cancel_reason")
+    private String cancelReason;
+
     @Enumerated(EnumType.STRING)
     private Status status = Status.ACTIVE;
     private Long hostId;
     
-
     public Event(){}
 
     public Long getId() {return id;}
@@ -67,4 +69,8 @@ public class Event {
 
     public Long getHostId() { return hostId; }
     public void setHostId(Long hostId) { this.hostId = hostId; }
+
+    public String getCancelReason(){return cancelReason;}
+    public void setCancelReason(String cancelReason){this.cancelReason = cancelReason;}
+
 }
