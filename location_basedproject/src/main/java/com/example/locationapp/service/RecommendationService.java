@@ -15,28 +15,33 @@ public class RecommendationService {
         this.geoapifyService = geoapifyService;
     }
 
+    private String getCategories(String type) {
+        return switch (type) {
+            case "hotels" -> "accommodation.hotel,accommodation.hostel";
+            case "restaurants" -> "catering.restaurant,catering.fast_food,catering.cafe";
+            case "attractions" -> "tourism.attraction,tourism.sights,entertainment.museum,leisure.park,heritage";
+            default -> "accommodation.hotel,accommodation.hostel,catering.restaurant,catering.cafe,catering.fast_food,catering.bar,tourism.attraction,tourism.sights,entertainment.museum,leisure.park,heritage";
+        };
+    }
+
+    // ✅ Fixed cache key — includes type and budget
     @Cacheable(value = "recommendations",
-               key = "T(Math).round(#lat * 100) + ',' + T(Math).round(#lng * 100) + ',' + #radiusKm")
+               key = "T(Math).round(#lat * 100) + ',' + T(Math).round(#lng * 100) + ',' + #radiusKm + ',' + #type + ',' + #budget")
     public List<RecommendationItemDTO> getRecommendations(
             double lat, double lng, double radiusKm, String type, String budget) {
 
+        System.out.println("==> getRecommendations: type=" + type + " budget=" + budget);
+
+        // ✅ Get categories based on type
+        String categories = getCategories(type == null ? "all" : type.toLowerCase());
+        System.out.println("==> categories: " + categories);
+
+        // ✅ Changed fetchByCategories to fetchAll with categories param
         List<RecommendationItemDTO> all = new ArrayList<>(
-                geoapifyService.fetchAll(lat, lng, radiusKm) 
+                geoapifyService.fetchAll(lat, lng, radiusKm, categories)
         );
 
-        String t = (type == null ? "all" : type.toLowerCase(Locale.ROOT));
-        if (!t.equals("all")) {
-            all.removeIf(item -> {
-                String itemType = item.getType() == null ? "" : item.getType().toLowerCase(Locale.ROOT);
-                return switch (t) {
-                    case "hotels" -> !itemType.equals("hotel");
-                    case "restaurants" -> !itemType.equals("restaurant");
-                    case "attractions" -> !itemType.equals("attraction");
-                    default -> false;
-                };
-            });
-        }
-
+        // ✅ Budget filter
         String b = (budget == null ? "any" : budget.toLowerCase(Locale.ROOT));
         if (!b.equals("any")) {
             all.removeIf(item -> {
@@ -46,6 +51,7 @@ public class RecommendationService {
             });
         }
 
+        // ✅ Deduplication
         Map<String, RecommendationItemDTO> unique = new LinkedHashMap<>();
         for (RecommendationItemDTO item : all) {
             String name = item.getName() == null ? "" : item.getName().trim().toLowerCase(Locale.ROOT);
@@ -63,8 +69,6 @@ public class RecommendationService {
 
         List<RecommendationItemDTO> result = new ArrayList<>(unique.values());
         result.sort(Comparator.comparingDouble(r -> r.getDistanceKm() == null ? 999999.0 : r.getDistanceKm()));
-
-        // ✅ Reduced from 80 to 30 — faster response, less rendering
         if (result.size() > 30) result = result.subList(0, 30);
 
         return result;
@@ -83,8 +87,8 @@ public class RecommendationService {
         String type = safe(item.getType());
         Map<String, String> tags = item.getTags() == null ? Map.of() : item.getTags();
 
-        if (type.equals("hotels")) {
-            String starsStr = tags.getOrDefault("starts", tags.getOrDefault("hotel:stars", ""));
+        if (type.equals("hotel")) {
+            String starsStr = tags.getOrDefault("stars", tags.getOrDefault("hotel:stars", ""));
             Integer stars = parseIntSafe(starsStr);
             if (stars != null) {
                 if (stars >= 4) return "high";

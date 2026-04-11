@@ -71,7 +71,7 @@ export const eventsApi = {
   update: async (eventId, data) =>
     (await api.put(`/api/events/${eventId}`, data)).data,
 
-
-
+  complete: async (eventId) => 
+  (await api.post(`/api/events/${eventId}/complete`)).data,
 
 };

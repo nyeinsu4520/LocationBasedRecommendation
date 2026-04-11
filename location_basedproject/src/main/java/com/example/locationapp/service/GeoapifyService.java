@@ -19,23 +19,10 @@ public class GeoapifyService {
     @Value("${app.geoapify.key}")
     private String apiKey;
 
-    public List<RecommendationItemDTO> fetchAll(double lat, double lng, double radiusKm) {
+    public List<RecommendationItemDTO> fetchAll(double lat, double lng, double radiusKm, String categories) {
         int radiusMeters = (int) Math.round(radiusKm * 1000.0);
 
-        // ✅ Geoapify categories for hotels, restaurants, attractions
-        String categories = String.join(",",
-                "accommodation.hotel",
-                "accommodation.hostel",
-                "catering.restaurant",
-                "catering.cafe",
-                "catering.fast_food",
-                "catering.bar",
-                "tourism.attraction",
-                "tourism.sights",
-                "entertainment.museum",
-                "leisure.park",
-                "heritage"
-        );
+        
 
         String url = "https://api.geoapify.com/v2/places" +
                 "?categories=" + categories +

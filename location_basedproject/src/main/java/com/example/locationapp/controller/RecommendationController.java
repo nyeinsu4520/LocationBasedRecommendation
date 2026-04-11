@@ -19,18 +19,23 @@ public class RecommendationController {
         this.recommendationService = recommendationService;
     }
 
-    @GetMapping
-    public ResponseEntity<List<RecommendationItemDTO>> getRecommendations(
-            @RequestParam double lat,
-            @RequestParam double lng,
-            @RequestParam double radiusKm,
-            @RequestParam(defaultValue = "all") String type,
-            @RequestParam(defaultValue = "any" ) String budget
-    ) {
+  @GetMapping
+public ResponseEntity<?> getRecommendations(
+        @RequestParam double lat,
+        @RequestParam double lng,
+        @RequestParam double radiusKm,
+        @RequestParam(defaultValue = "all") String type,
+        @RequestParam(defaultValue = "any") String budget) {
+    try {
         return ResponseEntity.ok(
-                recommendationService.getRecommendations(lat, lng, radiusKm, type, budget)
+            recommendationService.getRecommendations(lat, lng, radiusKm, type, budget)
         );
+    } catch (Exception e) {
+        return ResponseEntity.badRequest().body(e.getMessage());
     }
+}
+
+
     @GetMapping("/description")
     public ResponseEntity<String> getDescription(@RequestParam String name) {
     try {

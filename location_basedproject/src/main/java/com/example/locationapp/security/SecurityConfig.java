@@ -60,6 +60,7 @@ public SecurityFilterChain filterChain(org.springframework.security.config.annot
                 .requestMatchers("/api/events/**").authenticated()
                 .requestMatchers("/api/payments/**").authenticated()
                 .requestMatchers("/api/notifications/**").authenticated()
+                .requestMatchers("/api/feedback/**").authenticated()
                 .requestMatchers("/ws", "/ws/**").permitAll()
                 .anyRequest().authenticated()
         );

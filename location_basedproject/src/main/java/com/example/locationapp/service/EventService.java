@@ -193,8 +193,6 @@ public class EventService {
         EventMember member = new EventMember(event, userId);
         member.setStatus(EventMember.Status.PENDING);
         EventMember saved = eventMemberRepository.save(member);
-
-        // ✅ Notify host about join request
         notificationService.createNotification(
             event.getHostId(), eventId, event.getTitle(),
             "User #" + userId + " requested to join your event",
@@ -269,6 +267,18 @@ public class EventService {
                             event.getId(), EventMember.Status.ACTIVE);
                     return toDto(event, count); 
                 }).toList();
+    }
+
+    public void completeEvent(Long eventId, Long userId){
+        Event event = eventRepository.findById(eventId).orElseThrow(() -> new RuntimeException("Event not found."));
+        if(!event.getHostId().equals(userId)){
+            throw new RuntimeException("Only the host can complete this event.");
+        }
+        if(event.getStatus() != Event.Status.ACTIVE){
+            throw new RuntimeException("Only active events can be completed");
+        }
+        event.setStatus(Event.Status.COMPLETED);
+        eventRepository.save(event);
     }
 
     public List<EventSummaryDto> getAllEvents() {

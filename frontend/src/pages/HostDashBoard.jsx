@@ -257,12 +257,26 @@ export default function HostDashboard({ open, onClose }) {
 
                         {/* ✅ Show Cancel only if ACTIVE */}
                         {event.status === "ACTIVE" && (
+                          <>
                           <button
                             onClick={() => openCancelDialog(event.id)}
                             className="text-xs px-3 py-1.5 rounded-lg border border-red-200 text-red-600 hover:bg-red-50"
                           >
                             Cancel
                           </button>
+                          <button
+                          onClick={async () => {
+                          if (window.confirm("Mark this event as completed?")) {
+                            await eventsApi.complete(event.id);
+                            loadEvents();
+                            }
+                          }}
+                          className="text-xs px-3 py-1.5 rounded-lg border border-green-200 text-green-700 hover:bg-green-50"
+                        >
+                          Complete
+                            
+                          </button>
+                          </>
                         )}
 
                         {/* ✅ Show awaiting message if CANCEL_REQUESTED */}

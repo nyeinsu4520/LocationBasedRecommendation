@@ -15,7 +15,6 @@ public class ChatMessage {
     private Long userId;
     private String username;
 
-    // ✅ Changed from Location to Event
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id", nullable = false)
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
@@ -28,7 +27,6 @@ public class ChatMessage {
 
     public ChatMessage() {}
 
-    // ✅ Constructor now accepts Event instead of Location
     public ChatMessage(Long userId, String username, Event event, String content) {
         this.userId = userId;
         this.username = username;

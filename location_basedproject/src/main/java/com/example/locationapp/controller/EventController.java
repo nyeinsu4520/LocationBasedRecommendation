@@ -220,6 +220,18 @@ public class EventController {
         }
     }
 
+    @PostMapping("/{eventId}/complete")
+    public ResponseEntity<?> completeEvent(
+        @PathVariable Long eventId, 
+        @AuthenticationPrincipal UserPrincipal principal){
+            try{
+                eventService.completeEvent(eventId, principal.getUserId());
+                return ResponseEntity.ok().build();
+            }catch(RuntimeException e){
+                return ResponseEntity.badRequest().body(e.getMessage());
+            }
+        }
+
 
     @GetMapping("/{eventId}")
     public ResponseEntity<?> getEvent(@PathVariable Long eventId) {

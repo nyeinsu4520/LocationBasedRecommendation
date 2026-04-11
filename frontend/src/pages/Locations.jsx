@@ -97,7 +97,6 @@ const toggleCard = async (loc) => {
       },
        (error) => {
       console.error("Location error:", error);
-      // ✅ Only fall back to Cardiff if GPS fails
       setCenter({ lat: 51.4816, lng: -3.1791 });
       setGpsReady(true);
     },
@@ -127,10 +126,7 @@ const toggleCard = async (loc) => {
   loadNearby();
   loadNearbyEvents(center.lat, center.lng);
 }, [center?.lat, center?.lng, radiusKm, type, budget, gpsReady]);
-
-
   
-
   useEffect(() => {
   const loadJoined = async () => {
     try {
@@ -172,9 +168,7 @@ const toggleCard = async (loc) => {
 
   function formatOpeningHours(raw) {
   if (!raw) return null;
-  // If it's already short enough, show as-is
   if (raw.length < 40) return `Hours: ${raw}`;
-  // Otherwise truncate
   return `Hours: ${raw.substring(0, 37)}...`;
 }
 
@@ -182,7 +176,6 @@ const toggleCard = async (loc) => {
     <div className="min-h-screen bg-slate-50">
       <div className="max-w-6xl mx-auto p-6">
 
-        {/* Header */}
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div>
             <h1 className="text-2xl font-semibold text-slate-900">
@@ -200,7 +193,6 @@ const toggleCard = async (loc) => {
           </div>
         )}
 
-        {/* Search bar */}
         <div className="mt-6 bg-white rounded-2xl shadow p-4">
           <form onSubmit={onSearch} className="flex gap-2 flex-wrap">
             <input
